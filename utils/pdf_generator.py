@@ -16,8 +16,31 @@ def generate_pdf(text: str) -> bytes:
     
     # Process line by line for professional styling
     lines = clean_text.split('\n')
+    
+    # helper to break up giant continuous strings (URLs, dashes)
+    def break_long_words(s, max_len=60):
+        words = s.split(' ')
+        chunked = []
+        for w in words:
+            if len(w) > max_len:
+                chunked.append(' '.join([w[i:i+max_len] for i in range(0, len(w), max_len)]))
+            else:
+                chunked.append(w)
+        return ' '.join(chunked)
+
     for line in lines:
         stripped = line.strip()
+        
+        if stripped.startswith('---'):
+            # Horizontal rule instead of crashing on a long string of dashes
+            pdf.ln(4)
+            y = pdf.get_y()
+            pdf.line(15, y, 195, y)
+            pdf.ln(4)
+            continue
+            
+        stripped = break_long_words(stripped)
+        
         if stripped.startswith('# '):
             pdf.set_font("Helvetica", 'B', 16)
             pdf.cell(0, 10, text=stripped[2:], ln=True)
@@ -34,12 +57,19 @@ def generate_pdf(text: str) -> bytes:
             pdf.set_font("Helvetica", '', 11)
             pdf.set_x(20)  # Indent for bullet points
             # Handle wrapping for long bullet points
-            pdf.multi_cell(0, 6, text="• " + stripped[2:])
+            # text="• " works, but since we break long words above, this is safe from crashes
+            try:
+                pdf.multi_cell(0, 6, text="• " + stripped[2:])
+            except ValueError:
+                pdf.cell(0, 6, text="[Error wrapping bullet line]", ln=True)
         else:
             pdf.set_font("Helvetica", '', 11)
             if stripped == '':
                 pdf.ln(2) # Add spacing for empty lines
             else:
-                pdf.multi_cell(0, 6, text=stripped)
+                try:
+                    pdf.multi_cell(0, 6, text=stripped)
+                except ValueError:
+                    pdf.cell(0, 6, text="[Error wrapping line]", ln=True)
     
     return bytes(pdf.output())
