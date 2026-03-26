@@ -11,16 +11,46 @@ def generate_tailored_cv(base_cv: str, job_description: str, api_key: str, model
     """Takes the user's base CV and a job description to generate a tailored CV."""
     client = get_client(api_key)
 
+    latex_template = r'''
+\documentclass[10pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{a4paper, margin=0.75in}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+\definecolor{primary}{RGB}{33,50,76}
+\titleformat{\section}{\large\bfseries\color{primary}}{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{10pt}{5pt}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+\begin{center}
+    {\Huge \textbf{\color{primary} Candidate Name}} \\ \vspace{5pt}
+    \small email@example.com | 123-456-7890 | LinkedIn | GitHub
+\end{center}
+\vspace{10pt}
+
+\section{Experience}
+\textbf{Job Title} \hfill \textit{Month Year - Month Year} \\
+\textit{Company Name} \hfill City, State
+\begin{itemize}[leftmargin=*, noitemsep, topsep=0pt]
+    \item Bullet point 1
+\end{itemize}
+
+\end{document}
+'''
+
     system_prompt = (
         "You are an expert career coach and technical recruiter. Your task is to extract "
         "and highlight the most relevant skills, experiences, and accomplishments from the "
         "provided Base CV that align explicitly with the requirements in the Job Description. "
         "Rules:\n"
         "1. DO NOT invent or hallucinate any experience, skills, or metrics that are not in the Base CV.\n"
-        "2. Keep the format clean, professional, and ATS-friendly (use plain text with basic markdown for headers and lists). DO NOT use bolding (**text**) or italics (*text*).\n"
-        "3. Emphasize keywords found in the job description where the candidate has genuine experience, but do NOT bold them.\n"
-        "4. Be concise but impactful with bullet points.\n"
-        "5. Output ONLY the exact CV content. DO NOT include any conversational preamble, AI comments, or introductory/concluding text like 'Here is your tailored CV'."
+        "2. You MUST output a completely valid, ready-to-compile LaTeX document using the provided Resume template structure. Do NOT output Markdown.\n"
+        "3. You MUST escape all LaTeX special characters in the text (like \\%, \\&, \\$, \\#, \\_, \\{, \\}).\n"
+        "4. Output ONLY the raw LaTeX code. Do not include markdown code block backticks (```latex) or any conversational preamble."
     )
 
     user_prompt = f"""
@@ -30,7 +60,10 @@ def generate_tailored_cv(base_cv: str, job_description: str, api_key: str, model
     --- BASE CV ---
     {base_cv}
 
-    Please provide a tailored version of the CV based on the above rules.
+    --- LATEX TEMPLATE TO USE ---
+    {latex_template}
+
+    Please populate the template above with the tailored CV content and output ONLY the valid LaTeX code.
     """
 
     try:
