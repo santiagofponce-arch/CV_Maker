@@ -47,7 +47,8 @@ def generate_pdf(text: str) -> bytes:
         # Bullet Points
         elif stripped.startswith('- ') or stripped.startswith('* '):
             pdf.set_font("Helvetica", '', 11)
-            bullet_text = "• " + stripped[2:]
+            # FPDF's basic Helvetica font only supports latin-1, so we use a standard dash instead of a unicode bullet
+            bullet_text = "- " + stripped[2:]
             # Python's textwrap is crash-proof compared to FPDF's multi_cell
             wrapped_lines = textwrap.wrap(bullet_text, width=80)
             for i, wrap_line in enumerate(wrapped_lines):
