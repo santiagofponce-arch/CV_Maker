@@ -14,62 +14,57 @@ def generate_pdf(text: str) -> bytes:
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # Process line by line for professional styling
+    import textwrap
+    
+    # Process line by line, pre-wrapping text to guarantee no FPDF crashes
     lines = clean_text.split('\n')
     
-    # helper to break up giant continuous strings (URLs, dashes)
-    def break_long_words(s, max_len=60):
-        words = s.split(' ')
-        chunked = []
-        for w in words:
-            if len(w) > max_len:
-                chunked.append(' '.join([w[i:i+max_len] for i in range(0, len(w), max_len)]))
-            else:
-                chunked.append(w)
-        return ' '.join(chunked)
-
     for line in lines:
         stripped = line.strip()
         
+        # Horizontal rules
         if stripped.startswith('---'):
-            # Horizontal rule instead of crashing on a long string of dashes
-            pdf.ln(4)
+            pdf.ln(2)
             y = pdf.get_y()
             pdf.line(15, y, 195, y)
             pdf.ln(4)
             continue
             
-        stripped = break_long_words(stripped)
-        
+        # Headers
         if stripped.startswith('# '):
             pdf.set_font("Helvetica", 'B', 16)
-            pdf.cell(0, 10, text=stripped[2:], ln=True)
+            pdf.cell(0, 10, txt=stripped[2:], ln=True)
             pdf.ln(2)
         elif stripped.startswith('## '):
             pdf.set_font("Helvetica", 'B', 14)
-            pdf.cell(0, 8, text=stripped[3:], ln=True)
+            pdf.cell(0, 8, txt=stripped[3:], ln=True)
             pdf.ln(2)
         elif stripped.startswith('### '):
             pdf.set_font("Helvetica", 'B', 12)
-            pdf.cell(0, 6, text=stripped[4:], ln=True)
-            pdf.ln(1)
+            pdf.cell(0, 6, txt=stripped[4:], ln=True)
+            pdf.ln(2)
+            
+        # Bullet Points
         elif stripped.startswith('- ') or stripped.startswith('* '):
             pdf.set_font("Helvetica", '', 11)
-            pdf.set_x(20)  # Indent for bullet points
-            # Handle wrapping for long bullet points
-            # text="• " works, but since we break long words above, this is safe from crashes
-            try:
-                pdf.multi_cell(0, 6, text="• " + stripped[2:])
-            except ValueError:
-                pdf.cell(0, 6, text="[Error wrapping bullet line]", ln=True)
+            bullet_text = "• " + stripped[2:]
+            # Python's textwrap is crash-proof compared to FPDF's multi_cell
+            wrapped_lines = textwrap.wrap(bullet_text, width=80)
+            for i, wrap_line in enumerate(wrapped_lines):
+                if i == 0:
+                    pdf.set_x(20)
+                else:
+                    pdf.set_x(23) # Indent subsequent lines of a long bullet point
+                pdf.cell(0, 6, txt=wrap_line, ln=True)
+
+        # Standard Text and empty lines
         else:
             pdf.set_font("Helvetica", '', 11)
             if stripped == '':
-                pdf.ln(2) # Add spacing for empty lines
+                pdf.ln(2)
             else:
-                try:
-                    pdf.multi_cell(0, 6, text=stripped)
-                except ValueError:
-                    pdf.cell(0, 6, text="[Error wrapping line]", ln=True)
+                wrapped_lines = textwrap.wrap(stripped, width=85)
+                for wrap_line in wrapped_lines:
+                    pdf.cell(0, 6, txt=wrap_line, ln=True)
     
     return bytes(pdf.output())
